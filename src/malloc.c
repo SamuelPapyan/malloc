@@ -1,9 +1,10 @@
 #include "malloc.h"
 
-t_block *g_block_list = NULL;
-t_zone  *g_tiny = NULL;
-t_zone  *g_small = NULL;
-t_zone  *g_large = NULL;
+t_heap  g_heap = {
+    .tiny_zone = NULL,
+    .small_zone = NULL,
+    .large_zone = NULL
+};
 
 void    *malloc(size_t size) {
     if (size == 0)

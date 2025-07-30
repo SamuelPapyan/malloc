@@ -2,10 +2,11 @@
 # define MALLOC_H
 
 #include <stddef.h>
-#include <stdint.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <string.h>
+# include <stdint.h>
+
+#include "libft.h"
 
 # define ALIGNMENT 16
 
@@ -33,15 +34,17 @@ typedef struct s_zone {
     void            *start;
 } t_zone;
 
+typedef struct s_heap {
+    t_zone  *tiny_zone;
+    t_zone  *small_zone;
+    t_zone  *large_zone;
+} t_heap;
+
 # define BLOCK_TO_PTR(block) ((void *)((char *)(block) + sizeof(t_block)))
 
 # define PTR_TO_BLOCK(ptr) ((t_block *)((char *)(ptr) - sizeof(t_block)))
 
-
-extern t_block *g_block_list;
-extern t_zone *g_tiny;
-extern t_zone *g_small;
-extern t_zone *g_large;
+extern t_heap g_heap;
 
 void    *malloc(size_t size);
 void    *realloc(void *ptr, size_t size);
@@ -50,17 +53,26 @@ void    free(void *ptr);
 void    show_alloc_mem(void);
 
 t_block *request_memory(size_t size);
-void    show_blocks(t_zone *zone);
 
 t_block *find_free_block(t_zone *zone, size_t size);
-t_block *find_best_fit_block(size_t size);
 
 void    split_block(t_block *block, size_t size);
 void    coalesce_blocks(t_block *block);
 
-void    ft_bzero(void *ptr, size_t size);
-
 t_zone  **get_zone(size_t size);
 t_zone  *allocate_new_zone(t_zone *prev, size_t size);
+
+void    ft_puthexa(uint64_t nb);
+
+// void    ft_bzero(void *ptr, size_t size);
+// void    ft_putstr_fd(char const *s, int fd);
+// void    ft_putchar_fd(char c, int fd);
+// size_t  ft_strlen(const char *s);
+// void    *ft_memset(void *b, int c, size_t len);
+// void    *ft_memcpy(void *dst, const void *src, size_t n);
+// void    *ft_memmove(void *dst, const void *src, size_t n);
+// void    ft_itoa_fd(size_t nb, char base, int fd, int prefix);
+// void    ft_itoa_base(size_t nb, char base, char length, int prefix);
+
 
 #endif
