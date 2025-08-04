@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   zone.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: spapyan <spapyan@student.42.fr>            +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/04 20:50:37 by spapyan           #+#    #+#             */
+/*   Updated: 2025/08/04 20:50:37 by spapyan          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "malloc.h"
 
 static size_t  zone_alloc_size(size_t size) {
@@ -12,11 +24,11 @@ static size_t  zone_alloc_size(size_t size) {
 
 t_zone  **get_zone(size_t size) {
     if (size <= TINY_LIMIT)
-        return &g_tiny;
+        return &(g_heap.tiny_zone);
     else if (size <= SMALL_LIMIT)
-        return &g_small;
+        return &(g_heap.small_zone);
     else
-        return &g_large;
+        return &(g_heap.large_zone);
 }
 
 t_zone  *allocate_new_zone(t_zone *prev, size_t size) {

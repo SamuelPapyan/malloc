@@ -1,10 +1,16 @@
-#include "malloc.h"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   calloc.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: spapyan <spapyan@student.42.fr>            +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/04 20:49:51 by spapyan           #+#    #+#             */
+/*   Updated: 2025/08/04 20:49:51 by spapyan          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-void    ft_bzero(void *ptr, size_t size) {
-    unsigned char *p = ptr;
-    while (size--)
-        *p++ = 0;
-}
+#include "malloc.h"
 
 void    *calloc(size_t nmemb, size_t size) {
     size_t total = nmemb * size;

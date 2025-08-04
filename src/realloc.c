@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   realloc.c                                          :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: spapyan <spapyan@student.42.fr>            +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/08/04 20:50:25 by spapyan           #+#    #+#             */
+/*   Updated: 2025/08/04 20:50:25 by spapyan          ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "malloc.h"
 
 void    *realloc(void *ptr, size_t size) {
@@ -17,7 +29,7 @@ void    *realloc(void *ptr, size_t size) {
         return NULL;
 
     size_t copy_size = block->size < size ? block->size : size;
-    memcpy(new_ptr, ptr, copy_size);
+    ft_memcpy(new_ptr, ptr, copy_size);
     free(ptr);
     return new_ptr;
     // if (ptr == NULL)
