@@ -6,7 +6,7 @@
 #include <sys/mman.h>
 # include <stdint.h>
 
-#include "libft.h"
+// #include "../libft/libft.h"
 
 # define ALIGNMENT 16
 
@@ -62,17 +62,11 @@ void    coalesce_blocks(t_block *block);
 t_zone  **get_zone(size_t size);
 t_zone  *allocate_new_zone(t_zone *prev, size_t size);
 
+void    ft_bzero(void *ptr, size_t size);
+void    ft_putstr_fd(char const *s, int fd);
+void    ft_putchar_fd(char c, int fd);
+void    ft_putnbr_fd(int n, int fd);
+void    *ft_memcpy(void *dst, const void *src, size_t n);
 void    ft_puthexa(uint64_t nb);
-
-// void    ft_bzero(void *ptr, size_t size);
-// void    ft_putstr_fd(char const *s, int fd);
-// void    ft_putchar_fd(char c, int fd);
-// size_t  ft_strlen(const char *s);
-// void    *ft_memset(void *b, int c, size_t len);
-// void    *ft_memcpy(void *dst, const void *src, size_t n);
-// void    *ft_memmove(void *dst, const void *src, size_t n);
-// void    ft_itoa_fd(size_t nb, char base, int fd, int prefix);
-// void    ft_itoa_base(size_t nb, char base, char length, int prefix);
-
 
 #endif
