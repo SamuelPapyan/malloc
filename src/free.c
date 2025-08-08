@@ -15,8 +15,12 @@
 void    free(void *ptr) {
     if (!ptr) return;
 
+    if (!is_valid_pointer(ptr)) {
+        ft_putstr_fd("Error: invalid free(%p)\n", 2);
+        ft_puthexa((uint64_t)ptr);
+    }
+
     t_block *block = PTR_TO_BLOCK(ptr);
     block->is_free = 1;
-
     coalesce_blocks(block);
 }

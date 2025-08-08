@@ -62,11 +62,14 @@ void    coalesce_blocks(t_block *block);
 t_zone  **get_zone(size_t size);
 t_zone  *allocate_new_zone(t_zone *prev, size_t size);
 
+int     is_valid_pointer(void *ptr);
+
 void    ft_bzero(void *ptr, size_t size);
 void    ft_putstr_fd(char const *s, int fd);
 void    ft_putchar_fd(char c, int fd);
 void    ft_putnbr_fd(int n, int fd);
 void    *ft_memcpy(void *dst, const void *src, size_t n);
 void    ft_puthexa(uint64_t nb);
+
 
 #endif
