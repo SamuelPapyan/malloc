@@ -69,7 +69,6 @@ void    ft_putstr_fd(char const *s, int fd);
 void    ft_putchar_fd(char c, int fd);
 void    ft_putnbr_fd(int n, int fd);
 void    *ft_memcpy(void *dst, const void *src, size_t n);
-void    ft_puthexa(uint64_t nb);
-
+void    ft_puthexa_fd(uint64_t nb, int fd);
 
 #endif

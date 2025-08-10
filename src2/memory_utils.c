@@ -1,28 +1,27 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   free.c                                             :+:      :+:    :+:   */
+/*   memory_utils.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: spapyan <spapyan@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/08/04 20:50:01 by spapyan           #+#    #+#             */
-/*   Updated: 2025/08/04 20:50:01 by spapyan          ###   ########.fr       */
+/*   Created: 2025/08/09 20:27:26 by spapyan           #+#    #+#             */
+/*   Updated: 2025/08/09 20:27:26 by spapyan          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "malloc.h"
+#include "malloc2.h"
 
-void    free(void *ptr) {
-    if (!ptr) return;
-
-    if (!is_valid_pointer(ptr)) {
-        ft_putstr_fd("Error: invalid free(", 2);
-        ft_puthexa_fd((uint64_t)ptr, 2);
-        ft_putstr_fd("\n", 2);
-        return;
+t_block *find_free_block(t_zone *zone, size_t size) {
+    for (t_block *b = zone->blocks; b != NULL; b = b->next) {
+        if (b->is_free && b->size >= size)
+            return b;
     }
+    return NULL;
+}
 
-    t_block *block = PTR_TO_BLOCK(ptr);
-    block->is_free = 1;
-    coalesce_blocks(block);
+t_block *find_block_from_ptr(void *ptr) {
+    if (!ptr)
+        return NULL;
+    return (t_block *)((char *)ptr - sizeof(t_block));
 }

@@ -18,7 +18,8 @@ NAME = libft_malloc_$(HOSTTYPE).so
 NAME_LINK = libft_malloc.so
 CC = gcc
 
-SRC_DIR = src
+# SRC_DIR = src
+SRC_DIR = src2
 OBJ_DIR = obj
 INC_DIR = include
 

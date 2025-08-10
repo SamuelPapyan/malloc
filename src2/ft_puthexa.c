@@ -5,12 +5,12 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: spapyan <spapyan@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/08/04 20:50:04 by spapyan           #+#    #+#             */
-/*   Updated: 2025/08/04 20:50:04 by spapyan          ###   ########.fr       */
+/*   Created: 2025/08/09 21:11:40 by spapyan           #+#    #+#             */
+/*   Updated: 2025/08/09 21:11:40 by spapyan          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "malloc.h"
+#include "malloc2.h"
 
 void    ft_puthexa_fd(uint64_t nb, int fd) {
     if (nb == 0) {

@@ -16,9 +16,9 @@
 static void print_block(t_block *block) {
     void *start = BLOCK_TO_PTR(block);
     void *end = (char *)start + block->size;
-    ft_puthexa((uint64_t)start);
+    ft_puthexa_fd((uint64_t)start, 1);
     ft_putstr_fd(" - ", 1);
-    ft_puthexa((uint64_t)end);
+    ft_puthexa_fd((uint64_t)end, 1);
     ft_putstr_fd(" | ", 1);
     ft_putnbr_fd(block->size, 1);
     ft_putstr_fd(" bytes\n", 1);
@@ -38,7 +38,7 @@ void show_blocks(t_zone *zone) {
 static void    print_zone(char *zone_name, t_zone *zone) {
     ft_putstr_fd(zone_name, 1);
     ft_putstr_fd(" : ", 1);
-    ft_puthexa((uint64_t)zone);
+    ft_puthexa_fd((uint64_t)zone, 1);
     ft_putchar_fd('\n', 1);
     show_blocks(zone);
 }
