@@ -67,6 +67,10 @@ void    *realloc(void *ptr, size_t size);
 void    *calloc(size_t nmemb, size_t size);
 int     is_ptr_allocated(void *ptr);
 
+t_block *find_block(void *ptr, t_zone **out_zone, t_zone ***out_prev_z);
+void    *internal_malloc(size_t size);
+void    internal_free(void *ptr);
+
 void show_alloc_mem();
 
 #endif

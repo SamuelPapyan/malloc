@@ -48,7 +48,6 @@ void show_alloc_mem_ex() {
         t_block *b = z->blocks;
         while (b) {
             if (!b->free) {
-                // printf("Block %p | Size: %zu\n", (void*)b, b->size);
                 ft_putstr("Block ");
                 ft_putptr((void*)b);
                 ft_putstr(" | Size: ");
@@ -78,7 +77,7 @@ void show_alloc_mem() {
                 if (!title_printed) {
                     ft_putstr(titles[i]);
                     ft_putstr(" : ");
-                    ft_putptr((void *)z); // Печатаем адрес зоны
+                    ft_putptr((void *)z);
                     ft_putendl("");
                     title_printed = 1;
                 }
