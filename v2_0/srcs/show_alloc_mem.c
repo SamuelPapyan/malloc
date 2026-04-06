@@ -21,19 +21,19 @@ void print_hex_dump(void *addr, size_t len) {
         if ((i % 16) == 0) {
             if (i != 0) ft_putuendl(buff);
             ft_putstr("  ");
-            ft_puthex(i);
+            ft_puthex((unsigned long)i);
             ft_putstr(" ");
         }
-        // printf(" %02x", pc[i]);
         ft_putstr(" ");
         ft_putform(pc[i]);
         if ((pc[i] < 0x20) || (pc[i] > 0x7e)) buff[i % 16] = '.';
         else buff[i % 16] = pc[i];
         buff[(i % 16) + 1] = '\0';
     }
-    while ((i % 16) != 0) {
-        ft_putstr("   ");
-        i++;
+
+    size_t remainder = i % 16;
+    if (remainder != 0) {
+        for (size_t j = 0; j < (16 - remainder); j++) ft_putstr("   ");
     }
     ft_putstr("  ");
     ft_putuendl(buff);

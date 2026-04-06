@@ -21,8 +21,8 @@
 # define TINY_MAX 128
 # define SMALL_MAX 1024
 
-# define TINY_HEAP_SIZE ((TINY_MAX + sizeof(t_block)) * 128)
-# define SMALL_HEAP_SIZE ((SMALL_MAX + sizeof(t_block)) * 128)
+# define TINY_HEAP_SIZE ((TINY_MAX + sizeof(t_block)) * 128 + sizeof(t_zone))
+# define SMALL_HEAP_SIZE ((SMALL_MAX + sizeof(t_block)) * 128 + sizeof(t_zone))
 
 typedef struct s_block {
     size_t          size;
@@ -42,12 +42,11 @@ typedef struct s_zone {
 extern pthread_mutex_t g_lock;
 extern t_zone *g_zones;
 
-
 void    ft_putchar(char c);
 void    ft_putstr(char *str);
 void    ft_putendl(char *str);
 void    ft_putnbr(int nbr);
-void	ft_puthex(int nbr);
+void	ft_puthex(unsigned long nbr);
 void	ft_putuendl(unsigned char *str);
 void	ft_putptr(void *ptr);
 void	ft_putform(int nbr);
@@ -57,10 +56,10 @@ size_t  get_zone_size(size_t size, int type);
 int     is_zone_empty(t_zone *zone);
 int     should_unmap_zone(t_zone *z);
 
-void    split_block(t_block *b, size_t size);
-t_zone  *create_zone(size_t size, int type);
+void split_block(t_block *b, size_t size);
+t_zone *create_zone(size_t size, int type);
 
-void	*ft_memcpy(void *dest, const void *src, size_t n);
+void    *ft_memcpy(void *dest, const void *src, size_t n);
 
 void    *malloc(size_t size);
 void    free(void *ptr);

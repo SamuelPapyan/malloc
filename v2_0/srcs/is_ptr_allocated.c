@@ -15,12 +15,14 @@
 int is_ptr_allocated(void *ptr) {
     t_zone *z = g_zones;
     while (z) {
-        t_block *b = z->blocks;
-        while (b) {
-            if ((void *)((char *)b + sizeof(t_block)) == ptr) {
-                return (b->free == 0); // Возвращаем истину, если блок занят
+        if (ptr > (void *)z && ptr < (void *)((char *)z + z->total_size)) {
+            t_block *b = z->blocks;
+            while (b) {
+                if ((void *)((char *)b + sizeof(t_block)) == ptr) {
+                    return (b->free == 0);
+                }
+                b = b->next;
             }
-            b = b->next;
         }
         z = z->next;
     }

@@ -18,30 +18,46 @@ void *realloc(void *ptr, size_t size) {
         free(ptr);
         return NULL;
     }
+
+    size_t aligned_new = align_size(size);
     pthread_mutex_lock(&g_lock);
+
     if (!is_ptr_allocated(ptr)) {
         pthread_mutex_unlock(&g_lock);
         return NULL;
     }
 
     t_block *b = (t_block *)((char *)ptr - sizeof(t_block));
-    size_t aligned_new = align_size(size);
-
-    int old_type = (b->size <= TINY_MAX) ? 0 : (b->size <= SMALL_MAX ? 1 : 2);
+    size_t old_data_size = b->size;
+    
+    int old_type = (old_data_size <= TINY_MAX) ? 0 : (old_data_size <= SMALL_MAX ? 1 : 2);
     int new_type = (aligned_new <= TINY_MAX) ? 0 : (aligned_new <= SMALL_MAX ? 1 : 2);
 
-    if (old_type == new_type && b->size >= aligned_new) {
-        split_block(b, aligned_new);
-        pthread_mutex_unlock(&g_lock);
-        return ptr;
+    if (old_type == new_type && old_type != 2) {
+        if (old_data_size >= aligned_new) {
+            split_block(b, aligned_new);
+            pthread_mutex_unlock(&g_lock);
+            return ptr;
+        }
+        
+        if (b->next && b->next->free &&
+            (b->size + sizeof(t_block) + b->next->size) >= aligned_new) {
+            b->size += sizeof(t_block) + b->next->size;
+            b->next = b->next->next;
+            if (b->next) b->next->prev = b;
+            split_block(b, aligned_new);
+            pthread_mutex_unlock(&g_lock);
+            return ptr;
+        }
     }
-    size_t old_size = b->size;
+
+    size_t copy_size = (old_data_size < size) ? old_data_size : size;
     pthread_mutex_unlock(&g_lock);
 
     void *new_ptr = malloc(size);
-    if (new_ptr) {
-        ft_memcpy(new_ptr, ptr, (old_size < size) ? old_size : size);
-        free(ptr);
-    }
+    if (!new_ptr) return NULL;
+
+    ft_memcpy(new_ptr, ptr, copy_size);
+    free(ptr);
     return new_ptr;
 }
