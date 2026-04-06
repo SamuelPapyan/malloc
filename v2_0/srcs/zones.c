@@ -17,7 +17,7 @@ t_zone *create_zone(size_t size, int type) {
     t_zone *zone = mmap(NULL, total_needed, PROT_READ | PROT_WRITE, 
                         MAP_ANON | MAP_PRIVATE, -1, 0);
     if (zone == MAP_FAILED) {
-        // errno = ENOMEM;
+        errno = ENOMEM;
         return NULL;
     }
 

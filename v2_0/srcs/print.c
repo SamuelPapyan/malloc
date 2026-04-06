@@ -59,14 +59,6 @@ static void print_hex_number(unsigned long nbr, int fd) {
 	ft_putchar_fd(symbols[nbr % 16], fd);
 }
 
-// static void	ft_puthex_fd(int n, int fd)
-// {
-// 	if (n < 0)
-// 		ft_putchar_fd('-', fd);
-// 	ft_putstr_fd("0x", fd);
-// 	print_hex_number(n, fd);
-// }
-
 void    ft_putchar(char c) {
     ft_putchar_fd(c, 1);
 }

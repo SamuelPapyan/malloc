@@ -17,15 +17,15 @@ int main() {
     show_alloc_mem();
 
     printf("\n--- ТЕСТ 3: Переход TINY -> SMALL -> LARGE (Realloc) ---\n");
-    void *re_p = malloc(32);
-    strcpy(re_p, "Hello, Malloc!");
-    printf("До: %p [%s]\n", re_p, (char*)re_p);
+    void *re-p = malloc(32);
+    strcpy(re-p, "Hello, Malloc!");
+    printf("До: %p [%s]\n", re-p, (char*)re-p);
     
-    re_p = realloc(re_p, 512); // Должен уйти в SMALL
-    printf("После SMALL: %p [%s]\n", re_p, (char*)re_p);
+    re-p = realloc(re-p, 512); // Должен уйти в SMALL
+    printf("После SMALL: %p [%s]\n", re-p, (char*)re-p);
     
-    re_p = realloc(re_p, 4096); // Должен уйти в LARGE
-    printf("После LARGE: %p [%s]\n", re_p, (char*)re_p);
+    re-p = realloc(re-p, 4096); // Должен уйти в LARGE
+    printf("После LARGE: %p [%s]\n", re-p, (char*)re-p);
     show_alloc_mem();
 
     printf("\n--- ТЕСТ 4: Очистка зон (Unmapping) ---\n");
@@ -37,7 +37,7 @@ int main() {
     printf("Освобождаем всё...\n");
     free(s1);
     free(s2);
-    free(re_p);
+    free(re-p);
     for (int i = 1; i < 128; i += 2) free(ptrs[i]);
 
     show_alloc_mem(); 

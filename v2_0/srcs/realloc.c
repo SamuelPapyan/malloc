@@ -19,17 +19,16 @@ void *realloc(void *ptr, size_t size) {
         return NULL;
     }
 
-    size_t aligned_new = align_size(size);
     pthread_mutex_lock(&g_lock);
 
-    if (!is_ptr_allocated(ptr)) {
+    t_block *b = find_block(ptr, NULL, NULL);
+    if (!b || b->free) {
         pthread_mutex_unlock(&g_lock);
         return NULL;
     }
 
-    t_block *b = (t_block *)((char *)ptr - sizeof(t_block));
+    size_t aligned_new = align_size(size);
     size_t old_data_size = b->size;
-    
     int old_type = (old_data_size <= TINY_MAX) ? 0 : (old_data_size <= SMALL_MAX ? 1 : 2);
     int new_type = (aligned_new <= TINY_MAX) ? 0 : (aligned_new <= SMALL_MAX ? 1 : 2);
 
@@ -39,9 +38,7 @@ void *realloc(void *ptr, size_t size) {
             pthread_mutex_unlock(&g_lock);
             return ptr;
         }
-        
-        if (b->next && b->next->free &&
-            (b->size + sizeof(t_block) + b->next->size) >= aligned_new) {
+        if (b->next && b->next->free && (b->size + sizeof(t_block) + b->next->size) >= aligned_new) {
             b->size += sizeof(t_block) + b->next->size;
             b->next = b->next->next;
             if (b->next) b->next->prev = b;
@@ -52,12 +49,13 @@ void *realloc(void *ptr, size_t size) {
     }
 
     size_t copy_size = (old_data_size < size) ? old_data_size : size;
+    
+    void *new_ptr = internal_malloc(size);
+    if (new_ptr) {
+        ft_memcpy(new_ptr, ptr, copy_size);
+        internal_free(ptr);
+    }
+
     pthread_mutex_unlock(&g_lock);
-
-    void *new_ptr = malloc(size);
-    if (!new_ptr) return NULL;
-
-    ft_memcpy(new_ptr, ptr, copy_size);
-    free(ptr);
     return new_ptr;
 }
