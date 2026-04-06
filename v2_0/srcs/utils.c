@@ -29,16 +29,12 @@ size_t align_size(size_t size) {
 
 void	*ft_memcpy(void *dest, const void *src, size_t n)
 {
-	char		*dstc;
-	const char	*srcc;
+	unsigned char *d = (unsigned char *)dest;
+    const unsigned char *s = (const unsigned char *)src;
 
-	if ((dest == src) || n == 0)
-		return (dest);
-	if (!dest && !src)
-		return (0);
-	dstc = (char *)dest;
-	srcc = (const char *)src;
-	while (n--)
-		dstc[n] = srcc[n];
-	return (dest);
+    if (!dest && !src) return NULL;
+    while (n--) {
+        *d++ = *s++;
+    }
+    return dest;
 }

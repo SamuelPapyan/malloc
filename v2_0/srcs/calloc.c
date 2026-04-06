@@ -1,28 +1,31 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   split_block.c                                      :+:      :+:    :+:   */
+/*   calloc.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: spapyan <spapyan@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/03/09 12:09:17 by spapyan           #+#    #+#             */
-/*   Updated: 2026/03/09 12:09:17 by spapyan          ###   ########.fr       */
+/*   Created: 2026/04/06 11:46:52 by spapyan           #+#    #+#             */
+/*   Updated: 2026/04/06 11:46:52 by spapyan          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "malloc.h"
 
-void split_block(t_block *b, size_t size) {
-    size = align_size(size);
-
-    if (b->size >= size + sizeof(t_block) + 16) {
-        t_block *new_b = (t_block *)((char *)b + sizeof(t_block) + size);
-        new_b->size = b->size - size - sizeof(t_block);
-        new_b->free = 1;
-        new_b->next = b->next;
-        new_b->prev = b;
-        if (b->next) b->next->prev = new_b;
-        b->next = new_b;
-        b->size = size;
+void *calloc(size_t nmemb, size_t size) {
+    if (nmemb == 0 || size == 0) return malloc(0);
+    if (nmemb > (size_t)-1 / size) {
+        errno = ENOMEM;
+        return NULL;
     }
+
+    size_t total = nmemb * size;
+    void *ptr = malloc(total);
+    if (ptr) {
+        unsigned char *p = (unsigned char *)ptr;
+        for (size_t i = 0; i < total; i++) {
+            p[i] = 0;
+        }
+    }
+    return ptr;
 }

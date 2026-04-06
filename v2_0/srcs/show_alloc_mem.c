@@ -70,13 +70,18 @@ void show_alloc_mem() {
     char *titles[] = {"TINY", "SMALL", "LARGE"};
 
     for (int i = 0; i < 3; i++) {
-        ft_putstr(titles[i]);
-        ft_putstr(" : ");
-        ft_putptr((void *)g_zones);
-        ft_putendl("");
         t_zone *z = g_zones;
+        int title_printed = 0;
+
         while (z) {
             if (z->type == (size_t)i) {
+                if (!title_printed) {
+                    ft_putstr(titles[i]);
+                    ft_putstr(" : ");
+                    ft_putptr((void *)z); // Печатаем адрес зоны
+                    ft_putendl("");
+                    title_printed = 1;
+                }
                 t_block *b = z->blocks;
                 while (b) {
                     if (!b->free) {

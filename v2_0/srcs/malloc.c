@@ -13,7 +13,7 @@
 #include "malloc.h"
 
 void *malloc(size_t size) {
-    if (size <= 0) return NULL;
+    if (size == 0) size = 1;
     size = align_size(size);
     int type = (size <= TINY_MAX) ? 0 : (size <= SMALL_MAX ? 1 : 2);
 
