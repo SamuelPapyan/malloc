@@ -13,11 +13,10 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <pthread.h>
-#include <string.h>
 
 #define TINY_MAX 128
 #define SMALL_MAX 1024
-// 128 блоков + их заголовки
+
 #define TINY_HEAP_SIZE ((TINY_MAX + sizeof(t_block)) * 128)
 #define SMALL_HEAP_SIZE ((SMALL_MAX + sizeof(t_block)) * 128)
 
