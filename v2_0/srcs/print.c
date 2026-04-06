@@ -51,24 +51,21 @@ static void	ft_putnbr_fd(int n, int fd)
 	print_number(n, fd);
 }
 
-static void print_hex_number(int nbr, int fd) {
+static void print_hex_number(unsigned long nbr, int fd) {
 	char*	symbols = "0123456789ABCDEF";
-	int	num;
-
-	if (nbr / 16 != 0) {
+	if (nbr >= 16) {
 		print_hex_number(nbr / 16, fd);
 	}
-	num = nbr % 16;
-	ft_putchar_fd(symbols[num], fd);
+	ft_putchar_fd(symbols[nbr % 16], fd);
 }
 
-static void	ft_puthex_fd(int n, int fd)
-{
-	if (n < 0)
-		ft_putchar_fd('-', fd);
-	ft_putstr_fd("0x", fd);
-	print_hex_number(n, fd);
-}
+// static void	ft_puthex_fd(int n, int fd)
+// {
+// 	if (n < 0)
+// 		ft_putchar_fd('-', fd);
+// 	ft_putstr_fd("0x", fd);
+// 	print_hex_number(n, fd);
+// }
 
 void    ft_putchar(char c) {
     ft_putchar_fd(c, 1);
@@ -86,8 +83,9 @@ void    ft_putnbr(int nbr) {
     ft_putnbr_fd(nbr, 1);
 }
 
-void	ft_puthex(int nbr) {
-	ft_puthex_fd(nbr, 1);
+void	ft_puthex(unsigned long nbr) {
+	ft_putstr("0x");
+    print_hex_number(nbr, 1);
 }
 
 void	ft_putuendl(unsigned char *str) {
@@ -99,19 +97,18 @@ void	ft_putuendl(unsigned char *str) {
 
 }
 
-void	ft_putptr(void *ptr) {
-	ft_putstr("0x");
-	unsigned long addr = (unsigned long)ptr;
-
-	int nibbles = sizeof(void*) * 2;
-	char buffer[16];
-	const char *symbols = "0123456789ABCDEF";
-
-	for (int i = nibbles - 1; i >= 0; i--) {
-		buffer[i] = symbols[addr & 0xF];
-		addr >>= 4;
-	}
-	write(1, buffer, nibbles);
+void    ft_putptr(void *ptr) {
+    unsigned long addr = (unsigned long)ptr;
+    char buffer[18];
+    char *hex = "0123456789abcdef";
+    
+    buffer[0] = '0';
+    buffer[1] = 'x';
+    for (int i = 17; i >= 2; i--) {
+        buffer[i] = hex[addr % 16];
+        addr /= 16;
+    }
+    write(1, buffer, 18);
 }
 
 void	ft_putform(int nbr) {

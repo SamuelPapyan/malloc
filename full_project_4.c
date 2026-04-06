@@ -1,13 +1,13 @@
-#include <unistd.h>
-#include <sys/mman.h>
-#include <pthread.h>
-#include <errno.h>
+# include <unistd.h>
+# include <sys/mman.h>
+# include <pthread.h>
+# include <errno.h>
 
-#define TINY_MAX 128
-#define SMALL_MAX 1024
+# define TINY_MAX 128
+# define SMALL_MAX 1024
 
-#define TINY_HEAP_SIZE ((TINY_MAX + sizeof(t_block)) * 128 + sizeof(t_zone))
-#define SMALL_HEAP_SIZE ((SMALL_MAX + sizeof(t_block)) * 128 + sizeof(t_zone))
+# define TINY_HEAP_SIZE ((TINY_MAX + sizeof(t_block)) * 128 + sizeof(t_zone))
+# define SMALL_HEAP_SIZE ((SMALL_MAX + sizeof(t_block)) * 128 + sizeof(t_zone))
 
 typedef struct s_block {
     size_t          size;
@@ -53,65 +53,32 @@ void    *calloc(size_t nmemb, size_t size);
 int     is_ptr_allocated(void *ptr);
 
 void show_alloc_mem();
-
-void free(void *ptr) {
-    if (!ptr) return;
-    pthread_mutex_lock(&g_lock);
-
+//====================================================================
+// Вспомогательная функция для поиска блока (используется в free и realloc)
+static t_block *find_block(void *ptr, t_zone **out_zone, t_zone ***out_prev_z) {
     t_zone **prev_z = &g_zones;
     t_zone *z = g_zones;
-
     while (z) {
         t_block *b = z->blocks;
         while (b) {
             if ((void *)((char *)b + sizeof(t_block)) == ptr) {
-                if (b->free) {
-                    pthread_mutex_unlock(&g_lock);
-                    return;
-                }
-                b->free = 1;
-
-                // Coalescing (Объединение соседних свободных блоков)
-                if (b->next && b->next->free) {
-                    b->size += sizeof(t_block) + b->next->size;
-                    b->next = b->next->next;
-                    if (b->next) b->next->prev = b;
-                }
-                if (b->prev && b->prev->free) {
-                    t_block *prev_b = b->prev;
-                    prev_b->size += sizeof(t_block) + b->size;
-                    prev_b->next = b->next;
-                    if (b->next) b->next->prev = prev_b;
-                    b = prev_b;
-                }
-                if (b->prev == NULL)
-                    z->blocks = b;
-
-                if (is_zone_empty(z) && should_unmap_zone(z)) {
-                    t_zone *to_unmap = z;
-                    *prev_z = z->next;
-                    munmap(to_unmap, to_unmap->total_size);
-                    pthread_mutex_unlock(&g_lock);
-                    return;
-                }
-                pthread_mutex_unlock(&g_lock);
-                return;
+                if (out_zone) *out_zone = z;
+                if (out_prev_z) *out_prev_z = prev_z;
+                return b;
             }
             b = b->next;
         }
         prev_z = &(z->next);
         z = z->next;
     }
-    pthread_mutex_unlock(&g_lock);
+    return NULL;
 }
 
-void *malloc(size_t size) {
-    if (size < 0) return NULL;
+// Внутренний malloc БЕЗ мьютекса
+static void *internal_malloc(size_t size) {
     if (size == 0) size = 1;
     size = align_size(size);
     int type = (size <= TINY_MAX) ? 0 : (size <= SMALL_MAX ? 1 : 2);
-
-    pthread_mutex_lock(&g_lock);
 
     if (type < 2) {
         t_zone *z = g_zones;
@@ -122,7 +89,6 @@ void *malloc(size_t size) {
                     if (b->free && b->size >= size) {
                         split_block(b, size);
                         b->free = 0;
-                        pthread_mutex_unlock(&g_lock);
                         return (void *)((char *)b + sizeof(t_block));
                     }
                     b = b->next;
@@ -131,26 +97,98 @@ void *malloc(size_t size) {
             z = z->next;
         }
     }
-
     t_zone *new_z = create_zone(size, type);
-    if (!new_z) {
-        pthread_mutex_unlock(&g_lock);
+    if (!new_z) return NULL;
+    new_z->next = g_zones;
+    g_zones = new_z;
+    t_block *first_b = new_z->blocks;
+    if (type < 2) split_block(first_b, size);
+    else first_b->size = new_z->total_size - sizeof(t_zone) - sizeof(t_block);
+    first_b->free = 0;
+    return (void *)((char *)first_b + sizeof(t_block));
+}
+
+// Внутренний free БЕЗ мьютекса
+static void internal_free(void *ptr) {
+    t_zone *z;
+    t_zone **prev_z;
+    t_block *b = find_block(ptr, &z, &prev_z);
+    
+    if (!b || b->free) return;
+
+    b->free = 1;
+    // Coalescing (Слияние)
+    if (b->next && b->next->free) {
+        b->size += sizeof(t_block) + b->next->size;
+        b->next = b->next->next;
+        if (b->next) b->next->prev = b;
+    }
+    if (b->prev && b->prev->free) {
+        t_block *prev_b = b->prev;
+        prev_b->size += sizeof(t_block) + b->size;
+        prev_b->next = b->next;
+        if (b->next) b->next->prev = prev_b;
+        b = prev_b;
+    }
+    if (b->prev == NULL) z->blocks = b;
+
+    // Unmap
+    if (is_zone_empty(z) && should_unmap_zone(z)) {
+        *prev_z = z->next;
+        munmap(z, z->total_size);
+    }
+}
+
+
+//====================================================================
+
+void *calloc(size_t nmemb, size_t size) {
+    if (nmemb == 0 || size == 0) return malloc(0);
+    if (nmemb > (size_t)-1 / size) {
+        errno = ENOMEM;
         return NULL;
     }
 
-    new_z->next = g_zones;
-    g_zones = new_z;
-
-    t_block *first_b = new_z->blocks;
-    if (type < 2) {
-        split_block(first_b, size);
-    } else {
-        first_b->size = new_z->total_size - sizeof(t_zone) - sizeof(t_block);
+    size_t total = nmemb * size;
+    void *ptr = malloc(total);
+    if (ptr) {
+        unsigned char *p = (unsigned char *)ptr;
+        for (size_t i = 0; i < total; i++) {
+            p[i] = 0;
+        }
     }
-    
-    first_b->free = 0;
+    return ptr;
+}
+
+void free(void *ptr) {
+    if (!ptr) return;
+    pthread_mutex_lock(&g_lock);
+    internal_free(ptr);
     pthread_mutex_unlock(&g_lock);
-    return (void *)((char *)first_b + sizeof(t_block));
+}
+
+int is_ptr_allocated(void *ptr) {
+    t_zone *z = g_zones;
+    while (z) {
+        if (ptr > (void *)z && ptr < (void *)((char *)z + z->total_size)) {
+            t_block *b = z->blocks;
+            while (b) {
+                if ((void *)((char *)b + sizeof(t_block)) == ptr) {
+                    return (b->free == 0);
+                }
+                b = b->next;
+            }
+        }
+        z = z->next;
+    }
+    return 0;
+}
+
+void *malloc(size_t size) {
+    pthread_mutex_lock(&g_lock);
+    void *res = internal_malloc(size);
+    pthread_mutex_unlock(&g_lock);
+    return res;
 }
 
 static void    ft_putchar_fd(char c, int fd) {
@@ -200,13 +238,13 @@ static void print_hex_number(unsigned long nbr, int fd) {
 	ft_putchar_fd(symbols[nbr % 16], fd);
 }
 
-static void	ft_puthex_fd(int n, int fd)
-{
-	if (n < 0)
-		ft_putchar_fd('-', fd);
-	ft_putstr_fd("0x", fd);
-	print_hex_number(n, fd);
-}
+// static void	ft_puthex_fd(int n, int fd)
+// {
+// 	if (n < 0)
+// 		ft_putchar_fd('-', fd);
+// 	ft_putstr_fd("0x", fd);
+// 	print_hex_number(n, fd);
+// }
 
 void    ft_putchar(char c) {
     ft_putchar_fd(c, 1);
@@ -264,31 +302,26 @@ void *realloc(void *ptr, size_t size) {
         return NULL;
     }
 
-    size_t aligned_new = align_size(size);
     pthread_mutex_lock(&g_lock);
 
-    if (!is_ptr_allocated(ptr)) {
+    t_block *b = find_block(ptr, NULL, NULL);
+    if (!b || b->free) {
         pthread_mutex_unlock(&g_lock);
         return NULL;
     }
 
-    t_block *b = (t_block *)((char *)ptr - sizeof(t_block));
+    size_t aligned_new = align_size(size);
     size_t old_data_size = b->size;
-    
     int old_type = (old_data_size <= TINY_MAX) ? 0 : (old_data_size <= SMALL_MAX ? 1 : 2);
     int new_type = (aligned_new <= TINY_MAX) ? 0 : (aligned_new <= SMALL_MAX ? 1 : 2);
 
     if (old_type == new_type && old_type != 2) {
-        // Если блок уже достаточно велик
         if (old_data_size >= aligned_new) {
             split_block(b, aligned_new);
             pthread_mutex_unlock(&g_lock);
             return ptr;
         }
-        
-        // Попытка объединения с СЛЕДУЮЩИМ блоком (In-place expansion)
-        if (b->next && b->next->free &&
-            (b->size + sizeof(t_block) + b->next->size) >= aligned_new) {
+        if (b->next && b->next->free && (b->size + sizeof(t_block) + b->next->size) >= aligned_new) {
             b->size += sizeof(t_block) + b->next->size;
             b->next = b->next->next;
             if (b->next) b->next->prev = b;
@@ -299,13 +332,14 @@ void *realloc(void *ptr, size_t size) {
     }
 
     size_t copy_size = (old_data_size < size) ? old_data_size : size;
+    
+    void *new_ptr = internal_malloc(size); // Вызов без повторного lock
+    if (new_ptr) {
+        ft_memcpy(new_ptr, ptr, copy_size);
+        internal_free(ptr); // Вызов без повторного lock
+    }
+
     pthread_mutex_unlock(&g_lock);
-
-    void *new_ptr = malloc(size);
-    if (!new_ptr) return NULL;
-
-    ft_memcpy(new_ptr, ptr, copy_size);
-    free(ptr);
     return new_ptr;
 }
 
@@ -347,7 +381,7 @@ void print_hex_dump(void *addr, size_t len) {
         if ((i % 16) == 0) {
             if (i != 0) ft_putuendl(buff);
             ft_putstr("  ");
-            print_hex_number((unsigned long)i, 1);
+            ft_puthex((unsigned long)i);
             ft_putstr(" ");
         }
         ft_putstr(" ");
@@ -480,7 +514,7 @@ t_zone *create_zone(size_t size, int type) {
     t_zone *zone = mmap(NULL, total_needed, PROT_READ | PROT_WRITE, 
                         MAP_ANON | MAP_PRIVATE, -1, 0);
     if (zone == MAP_FAILED) {
-        // errno = ENOMEM;
+        errno = ENOMEM;
         return NULL;
     }
 
@@ -496,39 +530,4 @@ t_zone *create_zone(size_t size, int type) {
     zone->blocks->prev = NULL;
 
     return zone;
-}
-
-void *calloc(size_t nmemb, size_t size) {
-    if (nmemb == 0 || size == 0) return malloc(0);
-    if (nmemb > (size_t)-1 / size) {
-        errno = ENOMEM;
-        return NULL;
-    }
-
-    size_t total = nmemb * size;
-    void *ptr = malloc(total);
-    if (ptr) {
-        unsigned char *p = (unsigned char *)ptr;
-        for (size_t i = 0; i < total; i++) {
-            p[i] = 0;
-        }
-    }
-    return ptr;
-}
-
-int is_ptr_allocated(void *ptr) {
-    t_zone *z = g_zones;
-    while (z) {
-        if (ptr > (void *)z && ptr < (void *)((char *)z + z->total_size)) {
-            t_block *b = z->blocks;
-            while (b) {
-                if ((void *)((char *)b + sizeof(t_block)) == ptr) {
-                    return (b->free == 0);
-                }
-                b = b->next;
-            }
-        }
-        z = z->next;
-    }
-    return 0;
 }

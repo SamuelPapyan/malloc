@@ -192,7 +192,7 @@ static void	ft_putnbr_fd(int n, int fd)
 	print_number(n, fd);
 }
 
-static void print_hex_number(unsigned long nbr, int fd) {
+void print_hex_number(unsigned long nbr, int fd) {
 	char*	symbols = "0123456789ABCDEF";
 	if (nbr >= 16) {
 		print_hex_number(nbr / 16, fd);

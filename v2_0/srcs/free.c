@@ -28,7 +28,6 @@ void free(void *ptr) {
                     return;
                 }
                 b->free = 1;
-                // Coalescing
                 if (b->next && b->next->free) {
                     b->size += sizeof(t_block) + b->next->size;
                     b->next = b->next->next;
@@ -43,9 +42,13 @@ void free(void *ptr) {
                 }
                 if (b->prev == NULL)
                     z->blocks = b;
+
                 if (is_zone_empty(z) && should_unmap_zone(z)) {
+                    t_zone *to_unmap = z;
                     *prev_z = z->next;
-                    munmap(z, z->total_size);
+                    munmap(to_unmap, to_unmap->total_size);
+                    pthread_mutex_unlock(&g_lock);
+                    return;
                 }
                 pthread_mutex_unlock(&g_lock);
                 return;
