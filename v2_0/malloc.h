@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <pthread.h>
+#include <errno.h>
 
 #define TINY_MAX 128
 #define SMALL_MAX 1024
@@ -25,17 +26,20 @@ typedef struct s_block {
     struct s_block  *next;
     struct s_block  *prev;
     int             free;
-} t_block;
+    int             padding;
+} t_block __attribute__((aligned(16)));
 
 typedef struct s_zone {
     size_t          type; // 0: TINY, 1: SMALL, 2: LARGE
     size_t          total_size;
     struct s_zone   *next;
     t_block         *blocks;
-} t_zone;
+} t_zone __attribute__((aligned(16)));
 
 extern pthread_mutex_t g_lock;
 extern t_zone *g_zones;
+
+int     is_ptr_allocated(void *ptr);
 
 void    ft_putchar(char c);
 void    ft_putstr(char *str);
@@ -46,14 +50,17 @@ void	ft_putuendl(unsigned char *str);
 void	ft_putptr(void *ptr);
 void	ft_putform(int nbr);
 
-size_t align_size(size_t size);
-size_t get_zone_size(size_t size, int type);
+size_t  align_size(size_t size);
+size_t  get_zone_size(size_t size, int type);
+int     is_zone_empty(t_zone *zone);
+int     should_unmap_zone(t_zone *z);
 
-void split_block(t_block *b, size_t size);
-t_zone *create_zone(size_t size, int type);
+void    split_block(t_block *b, size_t size);
+t_zone  *create_zone(size_t size, int type);
 
-void *malloc(size_t size);
-void free(void *ptr);
-void *realloc(void *ptr, size_t size);
+void    *malloc(size_t size);
+void    free(void *ptr);
+void    *realloc(void *ptr, size_t size);
+void    *calloc(size_t nmemb, size_t size);
 
 void show_alloc_mem();

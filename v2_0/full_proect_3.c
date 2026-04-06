@@ -6,8 +6,8 @@
 #define TINY_MAX 128
 #define SMALL_MAX 1024
 
-#define TINY_HEAP_SIZE ((TINY_MAX + sizeof(t_block)) * 128)
-#define SMALL_HEAP_SIZE ((SMALL_MAX + sizeof(t_block)) * 128)
+#define TINY_HEAP_SIZE ((TINY_MAX + sizeof(t_block)) * 128 + sizeof(t_zone))
+#define SMALL_HEAP_SIZE ((SMALL_MAX + sizeof(t_block)) * 128 + sizeof(t_zone))
 
 typedef struct s_block {
     size_t          size;
@@ -31,7 +31,7 @@ void    ft_putchar(char c);
 void    ft_putstr(char *str);
 void    ft_putendl(char *str);
 void    ft_putnbr(int nbr);
-void	ft_puthex(int nbr);
+void	ft_puthex(unsigned long nbr);
 void	ft_putuendl(unsigned char *str);
 void	ft_putptr(void *ptr);
 void	ft_putform(int nbr);
@@ -44,11 +44,13 @@ int     should_unmap_zone(t_zone *z);
 void split_block(t_block *b, size_t size);
 t_zone *create_zone(size_t size, int type);
 
-void *malloc(size_t size);
-void free(void *ptr);
-void *realloc(void *ptr, size_t size);
-void *calloc(size_t nmemb, size_t size);
-int is_ptr_allocated(void *ptr);
+void    *ft_memcpy(void *dest, const void *src, size_t n);
+
+void    *malloc(size_t size);
+void    free(void *ptr);
+void    *realloc(void *ptr, size_t size);
+void    *calloc(size_t nmemb, size_t size);
+int     is_ptr_allocated(void *ptr);
 
 void show_alloc_mem();
 
@@ -68,7 +70,8 @@ void free(void *ptr) {
                     return;
                 }
                 b->free = 1;
-                // Coalescing
+
+                // Coalescing (Объединение соседних свободных блоков)
                 if (b->next && b->next->free) {
                     b->size += sizeof(t_block) + b->next->size;
                     b->next = b->next->next;
@@ -83,9 +86,13 @@ void free(void *ptr) {
                 }
                 if (b->prev == NULL)
                     z->blocks = b;
+
                 if (is_zone_empty(z) && should_unmap_zone(z)) {
+                    t_zone *to_unmap = z;
                     *prev_z = z->next;
-                    munmap(z, z->total_size);
+                    munmap(to_unmap, to_unmap->total_size);
+                    pthread_mutex_unlock(&g_lock);
+                    return;
                 }
                 pthread_mutex_unlock(&g_lock);
                 return;
@@ -106,7 +113,6 @@ void *malloc(size_t size) {
 
     pthread_mutex_lock(&g_lock);
 
-    // 1. Поиск в существующих TINY/SMALL зонах
     if (type < 2) {
         t_zone *z = g_zones;
         while (z) {
@@ -126,14 +132,12 @@ void *malloc(size_t size) {
         }
     }
 
-    // 2. Если места нет или это LARGE — создаем новую зону
     t_zone *new_z = create_zone(size, type);
     if (!new_z) {
         pthread_mutex_unlock(&g_lock);
         return NULL;
     }
 
-    // Вставляем новую зону в начало списка
     new_z->next = g_zones;
     g_zones = new_z;
 
@@ -141,7 +145,6 @@ void *malloc(size_t size) {
     if (type < 2) {
         split_block(first_b, size);
     } else {
-        // Для LARGE отдаем всё пространство зоны за вычетом заголовков
         first_b->size = new_z->total_size - sizeof(t_zone) - sizeof(t_block);
     }
     
@@ -189,15 +192,12 @@ static void	ft_putnbr_fd(int n, int fd)
 	print_number(n, fd);
 }
 
-static void print_hex_number(int nbr, int fd) {
+static void print_hex_number(unsigned long nbr, int fd) {
 	char*	symbols = "0123456789ABCDEF";
-	int	num;
-
-	if (nbr / 16 != 0) {
+	if (nbr >= 16) {
 		print_hex_number(nbr / 16, fd);
 	}
-	num = nbr % 16;
-	ft_putchar_fd(symbols[num], fd);
+	ft_putchar_fd(symbols[nbr % 16], fd);
 }
 
 static void	ft_puthex_fd(int n, int fd)
@@ -224,8 +224,9 @@ void    ft_putnbr(int nbr) {
     ft_putnbr_fd(nbr, 1);
 }
 
-void	ft_puthex(int nbr) {
-	ft_puthex_fd(nbr, 1);
+void	ft_puthex(unsigned long nbr) {
+	ft_putstr("0x");
+    print_hex_number(nbr, 1);
 }
 
 void	ft_putuendl(unsigned char *str) {
@@ -237,19 +238,18 @@ void	ft_putuendl(unsigned char *str) {
 
 }
 
-void	ft_putptr(void *ptr) {
-	ft_putstr("0x");
-	unsigned long addr = (unsigned long)ptr;
-
-	int nibbles = sizeof(void*) * 2;
-	char buffer[16];
-	const char *symbols = "0123456789ABCDEF";
-
-	for (int i = nibbles - 1; i >= 0; i--) {
-		buffer[i] = symbols[addr & 0xF];
-		addr >>= 4;
-	}
-	write(1, buffer, nibbles);
+void    ft_putptr(void *ptr) {
+    unsigned long addr = (unsigned long)ptr;
+    char buffer[18];
+    char *hex = "0123456789abcdef";
+    
+    buffer[0] = '0';
+    buffer[1] = 'x';
+    for (int i = 17; i >= 2; i--) {
+        buffer[i] = hex[addr % 16];
+        addr /= 16;
+    }
+    write(1, buffer, 18);
 }
 
 void	ft_putform(int nbr) {
@@ -263,31 +263,49 @@ void *realloc(void *ptr, size_t size) {
         free(ptr);
         return NULL;
     }
+
+    size_t aligned_new = align_size(size);
     pthread_mutex_lock(&g_lock);
+
     if (!is_ptr_allocated(ptr)) {
         pthread_mutex_unlock(&g_lock);
         return NULL;
     }
 
     t_block *b = (t_block *)((char *)ptr - sizeof(t_block));
-    size_t aligned_new = align_size(size);
+    size_t old_data_size = b->size;
     
-    int old_type = (b->size <= TINY_MAX) ? 0 : (b->size <= SMALL_MAX ? 1 : 2);
+    int old_type = (old_data_size <= TINY_MAX) ? 0 : (old_data_size <= SMALL_MAX ? 1 : 2);
     int new_type = (aligned_new <= TINY_MAX) ? 0 : (aligned_new <= SMALL_MAX ? 1 : 2);
 
-    if (old_type == new_type && b->size >= aligned_new) {
-        split_block(b, aligned_new);
-        pthread_mutex_unlock(&g_lock);
-        return ptr;
+    if (old_type == new_type && old_type != 2) {
+        // Если блок уже достаточно велик
+        if (old_data_size >= aligned_new) {
+            split_block(b, aligned_new);
+            pthread_mutex_unlock(&g_lock);
+            return ptr;
+        }
+        
+        // Попытка объединения с СЛЕДУЮЩИМ блоком (In-place expansion)
+        if (b->next && b->next->free &&
+            (b->size + sizeof(t_block) + b->next->size) >= aligned_new) {
+            b->size += sizeof(t_block) + b->next->size;
+            b->next = b->next->next;
+            if (b->next) b->next->prev = b;
+            split_block(b, aligned_new);
+            pthread_mutex_unlock(&g_lock);
+            return ptr;
+        }
     }
-    size_t old_size = b->size;
+
+    size_t copy_size = (old_data_size < size) ? old_data_size : size;
     pthread_mutex_unlock(&g_lock);
 
     void *new_ptr = malloc(size);
-    if (new_ptr) {
-        ft_memcpy(new_ptr, ptr, (old_size < size) ? old_size : size);
-        free(ptr);
-    }
+    if (!new_ptr) return NULL;
+
+    ft_memcpy(new_ptr, ptr, copy_size);
+    free(ptr);
     return new_ptr;
 }
 
@@ -329,19 +347,19 @@ void print_hex_dump(void *addr, size_t len) {
         if ((i % 16) == 0) {
             if (i != 0) ft_putuendl(buff);
             ft_putstr("  ");
-            ft_puthex(i);
+            print_hex_number((unsigned long)i, 1);
             ft_putstr(" ");
         }
-        // printf(" %02x", pc[i]);
         ft_putstr(" ");
         ft_putform(pc[i]);
         if ((pc[i] < 0x20) || (pc[i] > 0x7e)) buff[i % 16] = '.';
         else buff[i % 16] = pc[i];
         buff[(i % 16) + 1] = '\0';
     }
-    while ((i % 16) != 0) {
-        ft_putstr("   ");
-        i++;
+
+    size_t remainder = i % 16;
+    if (remainder != 0) {
+        for (size_t j = 0; j < (16 - remainder); j++) ft_putstr("   ");
     }
     ft_putstr("  ");
     ft_putuendl(buff);
@@ -462,7 +480,7 @@ t_zone *create_zone(size_t size, int type) {
     t_zone *zone = mmap(NULL, total_needed, PROT_READ | PROT_WRITE, 
                         MAP_ANON | MAP_PRIVATE, -1, 0);
     if (zone == MAP_FAILED) {
-        errno = ENOMEM;
+        // errno = ENOMEM;
         return NULL;
     }
 
@@ -501,12 +519,14 @@ void *calloc(size_t nmemb, size_t size) {
 int is_ptr_allocated(void *ptr) {
     t_zone *z = g_zones;
     while (z) {
-        t_block *b = z->blocks;
-        while (b) {
-            if ((void *)((char *)b + sizeof(t_block)) == ptr) {
-                return (b->free == 0); // Возвращаем истину, если блок занят
+        if (ptr > (void *)z && ptr < (void *)((char *)z + z->total_size)) {
+            t_block *b = z->blocks;
+            while (b) {
+                if ((void *)((char *)b + sizeof(t_block)) == ptr) {
+                    return (b->free == 0);
+                }
+                b = b->next;
             }
-            b = b->next;
         }
         z = z->next;
     }
